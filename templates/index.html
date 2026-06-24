@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <title>Flask Snake.io</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        canvas {
+            border: 4px solid #444;
+            background-color: #111;
+            display: block;
+            margin: 20px auto;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Flask Snake.io Multiplayer</h1>
+    <p>Pohybuj sa pomocou šípok alebo WASD.</p>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 30;
+        const TILE_SIZE = canvas.width / GRID_SIZE;
+
+        // Odosielanie vstupu od hráča
+        window.addEventListener('keydown', e => {
+            let dir = null;
+            if (e.key === 'ArrowUp' || e.key === 'w') dir = 'UP';
+            if (e.key === 'ArrowDown' || e.key === 's') dir = 'DOWN';
+            if (e.key === 'ArrowLeft' || e.key === 'a') dir = 'LEFT';
+            if (e.key === 'ArrowRight' || e.key === 'd') dir = 'RIGHT';
+            
+            if (dir) {
+                socket.emit('move', { direction: dir });
+            }
+        });
+
+        // Vykresľovanie stavu hry zo servera
+        socket.on('game_state', data => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Vykreslenie jedla (červené krúžky)
+            ctx.fillStyle = 'red';
+            data.food.forEach(f => {
+                ctx.beginPath();
+                ctx.arc(f.x * TILE_SIZE + TILE_SIZE/2, f.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Vykreslenie všetkých hráčov
+            Object.keys(data.players).forEach(id => {
+                const player = data.players[id];
+                ctx.fillStyle = player.color;
+                
+                player.body.forEach((part, index) => {
+                    // Hlava je trochu väčšia alebo má inú štruktúru
+                    if (index === 0) {
+                        ctx.fillRect(part.x * TILE_SIZE, part.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    } else {
+                        ctx.fillRect(part.x * TILE_SIZE + 2, part.y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
